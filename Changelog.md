@@ -1,5 +1,12 @@
 Change Log 
 ============================
+
+### Version 1.10.2 ###
+* Added the ability to run on an iframe
+* Added an option to ignore scroll position
+* Added an option to set the parameter name to upload the file
+* IF onChange callback returns a promise, then it waits until the promise is fullfilled to submit
+
 ### Version 1.10.1 ###
 * `iframe` and `form` elements are now created with `document.createElement()` rather than the much slower HTML injection method
 * Removed unused variable from `_uploadIframe()`
