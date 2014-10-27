@@ -1,6 +1,15 @@
 Simple Ajax Uploader
 ============================
 
+CHANGES MADE
+============================
+* Added the ability to run on an iframe
+* Added an option to ignore scroll position
+* Added an option to set the parameter name to upload the file
+* IF onChange callback returns a promise, then it waits until the promise is fullfilled to submit  
+
+
+
 A Javascript plugin for cross-browser Ajax file uploading. Supports multiple file uploading with progress bars.
 
 <a href="https://www.lpology.com/code/ajaxuploader/">Live Demo</a><br />

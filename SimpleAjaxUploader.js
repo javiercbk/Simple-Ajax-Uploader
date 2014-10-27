@@ -202,7 +202,7 @@ ss.parseJSON = function( data ) {
   return false;
 };
 
-ss.getBox = function( elem ) {
+ss.getBox = function( elem , ignoreScroll) {
   "use strict";
 
   var box,
@@ -213,7 +213,11 @@ ss.getBox = function( elem ) {
   if ( elem.getBoundingClientRect ) {
     box = elem.getBoundingClientRect();
     docElem = document.documentElement;
-    top = box.top  + ( window.pageYOffset || docElem.scrollTop )  - ( docElem.clientTop  || 0 );
+    if(ignoreScroll){
+    	top = box.top  - ( docElem.clientTop  || 0 );
+    }else{
+    	top = box.top  + ( window.pageYOffset || docElem.scrollTop )  - ( docElem.clientTop  || 0 );
+    }
     left = box.left + ( window.pageXOffset || docElem.scrollLeft ) - ( docElem.clientLeft || 0 );
   } else {
     do {
@@ -248,10 +252,11 @@ ss.addStyles = function( elem, styles ) {
 * element on top of the specified element
 * copying position and dimensions.
 */
-ss.copyLayout = function( from, to ) {
+ss.copyLayout = function( from, to , ignoreScroll) {
   "use strict";
 
-  var box = ss.getBox( from );
+  var box = ss.getBox( from , ignoreScroll);
+  
 
   ss.addStyles( to, {
     position: 'absolute',
@@ -440,6 +445,7 @@ ss.SimpleUpload = function( options ) {
     multiple: false,
     maxUploads: 3,
     queue: true,
+    fileInput: null,
     checkProgressInterval: 50,
     keyParamName: 'APC_UPLOAD_PROGRESS',
     nginxProgressHeader: 'X-Progress-ID',
@@ -448,6 +454,7 @@ ss.SimpleUpload = function( options ) {
     accept: '',
     maxSize: false,
     name: '',
+    ignoreScroll: false,
     data: {},
     autoSubmit: true,
     multipart: false,
@@ -585,6 +592,13 @@ ss.SimpleUpload.prototype = {
   setData: function( data ) {
     "use strict";
     this._opts.data = data;
+  },
+  
+  /**
+   * Click input
+   */
+  activateInput: function(){
+	this._input.click();  
   },
 
   /**
@@ -746,10 +760,17 @@ ss.SimpleUpload.prototype = {
   _createInput: function() {
     "use strict";
 
-    var self = this,
-        div = document.createElement( 'div' );
-
-    this._input = document.createElement( 'input' );
+    var self = this;
+    var div = null;
+    var currentDocument = $(this._btns).parents('html').parent();
+    if(currentDocument.length > 0){
+    	div = currentDocument[0].createElement( 'div' );
+    	this._input = currentDocument[0].createElement( 'input' );
+    }else{
+    	div =  document.createElement( 'div' );
+    	this._input = document.createElement( 'input' );
+    }
+    
     this._input.type = 'file';
     this._input.name = this._opts.name;
 
@@ -805,7 +826,8 @@ ss.SimpleUpload.prototype = {
         filename = ss.getFilename( self._input.value );
         ext = ss.getExt( filename );
 
-        if ( false === self._opts.onChange.call( self, filename, ext, uploadBtn ) ) {
+        var promise = self._opts.onChange.call( self, filename, ext, uploadBtn ) 
+        if ( false ===  promise) {
           return;
         }
 
@@ -814,8 +836,8 @@ ss.SimpleUpload.prototype = {
       } else {
         filename = ss.getFilename( self._input.files[0].name );
         ext = ss.getExt( filename );
-
-        if ( false === self._opts.onChange.call( self, filename, ext, uploadBtn ) ) {
+        var promise = self._opts.onChange.call( self, filename, ext, uploadBtn );
+        if ( false ===  promise) {
           return;
         }
 
@@ -843,18 +865,27 @@ ss.SimpleUpload.prototype = {
 
       // Submit if autoSubmit option is true
       if ( self._opts.autoSubmit ) {
-        self.submit();
+    	  if(promise !== undefined){
+          	promise.then(function(){
+          		self.submit();
+          	});
+          }else{
+        	  self.submit();
+          }
+        
       }
     });
 
-    ss.addEvent( this._input, 'mouseover', function() {
+    ss.addEvent( this._input, 'mouseover', function(e) {
       ss.addClass( self._overBtn, self._opts.hoverClass );
+      $(self._overBtn).trigger('mouseover', e);
     });
 
-    ss.addEvent( this._input, 'mouseout', function() {
+    ss.addEvent( this._input, 'mouseout', function(e) {
       ss.removeClass( self._overBtn, self._opts.hoverClass );
       ss.removeClass( self._overBtn, self._opts.focusClass );
       self._input.parentNode.style.visibility = 'hidden';
+      $(self._overBtn).trigger('mouseout', e);
     });
 
     ss.addEvent( this._input, 'focus', function() {
@@ -866,7 +897,14 @@ ss.SimpleUpload.prototype = {
     });
 
     div.appendChild( this._input );
-    document.body.appendChild( div );
+    var currentDocument = $(this._btns).parents('html').parent();
+    if(currentDocument.length > 0){
+    	$(div).insertAfter(this._btns);
+    	currentDocument[0].body.appendChild( div );
+    }else{
+    	document.body.appendChild( div );
+    }
+    
   },
 
   /**
@@ -875,7 +913,6 @@ ss.SimpleUpload.prototype = {
   */
   rerouteClicks: function( elem ) {
     "use strict";
-
     var self = this;
 
     // ss.addEvent() returns a function to detach, which
@@ -890,7 +927,7 @@ ss.SimpleUpload.prototype = {
       }
 
       self._overBtn = elem;
-      ss.copyLayout( elem, self._input.parentNode );
+      ss.copyLayout( elem, self._input.parentNode , self._opts.ignoreScroll);
       self._input.parentNode.style.visibility = 'visible';
     });
 
@@ -1585,7 +1622,7 @@ ss.SimpleUpload.prototype = {
     var filename,
         ext,
         size;
-
+    
     if ( this._disabled ||
          this._active >= this._opts.maxUploads ||
          this._queue.length < 1 )
@@ -1663,3 +1700,5 @@ ss.SimpleUpload.prototype = {
 window.ss = ss;
 
 })( window, document );
+
+
